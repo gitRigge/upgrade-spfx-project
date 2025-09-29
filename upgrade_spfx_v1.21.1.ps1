@@ -66,6 +66,45 @@ try {
     exit 1
 }
 
+# Check if gulp-cli is installed
+try {
+    $gulpVersion = gulp --version
+    Write-Host "Using Gulp CLI version: $gulpVersion" -ForegroundColor Blue
+} catch {
+    Write-Warning "Gulp CLI is not installed globally. Installing gulp-cli..."
+    npm install -g gulp-cli
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install gulp-cli. Please install it manually."
+        exit 1
+    }
+}
+
+# Check if yo is installed
+try {
+    $yoVersion = yo --version
+    Write-Host "Using Yeoman version: $yoVersion" -ForegroundColor Blue
+} catch {
+    Write-Warning "Yeoman (yo) is not installed globally. Installing yo..."
+    npm install -g yo
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install yo. Please install it manually."
+        exit 1
+    }
+}
+
+# Check if @microsoft/generator-sharepoint is installed
+try {
+    $spfxGenVersion = yo @microsoft/sharepoint --version
+    Write-Host "Using @microsoft/generator-sharepoint version: $spfxGenVersion" -ForegroundColor Blue
+} catch {
+    Write-Warning "@microsoft/generator-sharepoint is not installed globally. Installing it..."
+    npm install -g @microsoft/generator-sharepoint
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install @microsoft/generator-sharepoint. Please install it manually."
+        exit 1
+    }
+}
+
 # Create backup of package.json if not skipped
 if (-not $SkipBackup) {
     Write-Host "Creating backup of package.json..." -ForegroundColor Blue
