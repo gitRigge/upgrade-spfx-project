@@ -128,6 +128,13 @@ if (Test-Path "package-lock.json") {
     Remove-Item "package-lock.json" -Force
 }
 
+# Read existing package.json
+$packageJson = Get-Content "package.json" | ConvertFrom-Json
+$withFastServe = $false
+if ([bool]($packageJson.devDependencies.PSobject.Properties.name -match "spfx-fast-serve-helpers")) {
+    $withFastServe = $true
+}
+
 # Clear npm cache
 Write-Host "Clearing npm cache..." -ForegroundColor Blue
 npm cache clean --force
@@ -166,7 +173,6 @@ $spfxDevDependencies = @(
     "@microsoft/eslint-plugin-spfx@1.21.1",
     "@microsoft/sp-build-web@1.21.1",
     "@microsoft/sp-module-interfaces@1.21.1",
-    "spfx-fast-serve-helpers@~1.21.0",
     "typescript@5.3"
 )
 
@@ -252,3 +258,8 @@ if (-not $SkipBackup) {
 }
 
 Write-Host "`nUpgrade script completed successfully!" -ForegroundColor Green
+
+# Re-run spfx-fast-serve if it was used in the project
+if ($withFastServe) {
+    spfx-fast-serve
+}
