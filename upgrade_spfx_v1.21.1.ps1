@@ -8,6 +8,10 @@ This script checks for the presence of Node.js v22 and npm, creates a backup
 of the package.json file (unless skipped), cleans existing installations,
 updates the package.json to set the Node.js engine to v22, and installs the
 required SPFx dependencies and dev dependencies for version 1.21.1.
+
+It then upgrades TypeScript to version 5.3.3 and adjusts the tsconfig.json file
+accordingly.
+
 It also attempts to install other existing dependencies and runs an npm audit
 to check for vulnerabilities.
 
@@ -32,6 +36,18 @@ param(
 
 Write-Host "Starting SPFx upgrade to v1.21.1..." -ForegroundColor Green
 Write-Host "Working directory: $(Get-Location)" -ForegroundColor Yellow
+
+function Get-ObjectMember {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory=$True, ValueFromPipeline=$True)]
+        [PSCustomObject]$obj
+    )
+    $obj | Get-Member -MemberType NoteProperty | ForEach-Object {
+        $key = $_.Name
+        [PSCustomObject]@{Key = $key; Value = $obj."$key"}
+    }
+}
 
 # Check if package.json exists
 if (-not (Test-Path "package.json")) {
@@ -128,13 +144,6 @@ if (Test-Path "package-lock.json") {
     Remove-Item "package-lock.json" -Force
 }
 
-# Read existing package.json
-$packageJson = Get-Content "package.json" | ConvertFrom-Json
-$withFastServe = $false
-if ([bool]($packageJson.devDependencies.PSobject.Properties.name -match "spfx-fast-serve-helpers")) {
-    $withFastServe = $true
-}
-
 # Clear npm cache
 Write-Host "Clearing npm cache..." -ForegroundColor Blue
 npm cache clean --force
@@ -143,92 +152,65 @@ npm cache clean --force
 Write-Host "Setting Node.js engine to v22 in package.json..." -ForegroundColor Blue
 $json = Get-Content "package.json" | ConvertFrom-Json
 $json.engines.node = ">=22.0.0 <23.0.0"
+
+# Set SPFx v1.21.1 dependencies
+Write-Host "Set SPFx v1.21.1 dependencies..." -ForegroundColor Green
+
+# Set main SPFx dependencies
+$spfxDependencies = @(
+    "@microsoft/sp-adaptive-card-extension-base",
+    "@microsoft/sp-core-library",
+    "@microsoft/sp-http",
+    "@microsoft/sp-property-pane"
+)
+
+$json.dependencies | Get-ObjectMember | foreach {
+    $_key = $_.Key
+    if ($spfxDependencies -contains $_.Key) {
+        $json.dependencies.$_key = '1.21.1'
+    }
+}
+
+# Set SPFx dev dependencies
+$spfxDevDependencies = @(
+    "@microsoft/eslint-config-spfx",
+    "@microsoft/eslint-plugin-spfx",
+    "@microsoft/sp-build-web",
+    "@microsoft/sp-module-interfaces",
+    "spfx-fast-serve-helpers"
+)
+
+$json.devDependencies | Get-ObjectMember | foreach {
+    $_key = $_.Key
+    if ($spfxDevDependencies -contains $_.Key) {
+        $json.devDependencies.$_key = '1.21.1'
+    }
+}
+
+# Set Typescript dependencies to v5.3
+$json.devDependencies.typescript = '5.3.3'
+
+$json.devDependencies | Get-ObjectMember | foreach {
+    $_key = $_.Key
+    if ($_key -like '@microsoft/rush-stack-compiler-*') {
+        $json.devDependencies.psobject.Properties.Remove($_key)
+        $json.devDependencies | Add-Member -MemberType NoteProperty -Name '@microsoft/rush-stack-compiler-5.3' -Value '0.1.0'
+    }
+}
+
+# Write package.json
+Write-Host "Writing package.json..." -ForegroundColor Blue
 $json | ConvertTo-Json -Depth 10 | Set-Content "package.json"
 
+# Fix tsconfig.json
+Write-Host "Fixing tsconfig.json..." -ForegroundColor Blue
+$json = Get-Content "tsconfig.json" | ConvertFrom-Json
+$json.extends = "./node_modules/@microsoft/rush-stack-compiler-5.3/includes/tsconfig-web.json"
+$json | ConvertTo-Json -Depth 10 | Set-Content "tsconfig.json"
 
-# Install SPFx v1.21.1 dependencies
-Write-Host "Installing SPFx v1.21.1 dependencies..." -ForegroundColor Green
-
-# Install main SPFx dependencies
-$spfxDependencies = @(
-    "@microsoft/sp-adaptive-card-extension-base@1.21.1",
-    "@microsoft/sp-core-library@1.21.1",
-    "@microsoft/sp-http@1.21.1",
-    "@microsoft/sp-property-pane@1.21.1"
-)
-
-Write-Host "Installing SPFx runtime dependencies..." -ForegroundColor Blue
-foreach ($package in $spfxDependencies) {
-    Write-Host "Installing: $package" -ForegroundColor Cyan
-    npm install $package --save --save-exact --legacy-peer-deps
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to install $package"
-        exit 1
-    }
-}
-
-# Install SPFx dev dependencies
-$spfxDevDependencies = @(
-    "@microsoft/eslint-config-spfx@1.21.1",
-    "@microsoft/eslint-plugin-spfx@1.21.1",
-    "@microsoft/sp-build-web@1.21.1",
-    "@microsoft/sp-module-interfaces@1.21.1",
-    "typescript@5.3"
-)
-
-Write-Host "Installing SPFx development dependencies..." -ForegroundColor Blue
-foreach ($package in $spfxDevDependencies) {
-    Write-Host "Installing: $package" -ForegroundColor Cyan
-    npm install $package --save-dev --save-exact --legacy-peer-deps
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to install $package"
-        exit 1
-    }
-}
-
-# Install other dependencies (keeping existing versions unless they cause conflicts)
-# Read other dependencies from package.json
-$packageJson = Get-Content "package.json" | ConvertFrom-Json
-$otherDependencies = @()
-
-if ($packageJson.dependencies) {
-    foreach ($dep in $packageJson.dependencies.PSObject.Properties) {
-        # Skip SPFx dependencies already handled above
-        if ($spfxDependencies -notcontains "$($dep.Name)@$($dep.Value)") {
-            $otherDependencies += "$($dep.Name)@$($dep.Value)"
-        }
-    }
-}
-
-Write-Host "Installing other runtime dependencies..." -ForegroundColor Blue
-foreach ($package in $otherDependencies) {
-    Write-Host "Installing: $package" -ForegroundColor Cyan
-    npm install $package --save --legacy-peer-deps
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Failed to install $package - you may need to update this manually"
-    }
-}
-
-# Install other dev dependencies
-$otherDevDependencies = @()
-if ($packageJson.devDependencies) {
-    foreach ($dep in $packageJson.devDependencies.PSObject.Properties) {
-        # Skip SPFx dev dependencies already handled above
-        if ($spfxDevDependencies -notcontains "$($dep.Name)@$($dep.Value)") {
-            $otherDevDependencies += "$($dep.Name)@$($dep.Value)"
-        }
-    }
-}
-
-Write-Host "Installing other development dependencies..." -ForegroundColor Blue
-foreach ($package in $otherDevDependencies) {
-    Write-Host "Installing: $package" -ForegroundColor Cyan
-    npm install $package --save-dev --legacy-peer-deps
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Failed to install $package - you may need to update this manually"
-    }
-}
-npm install ajv --save-dev  # prevent "Error: Cannot find module 'ajv/dist/core'"
+# Install dependencies
+Write-Host "Installing dependencies..." -ForegroundColor Blue
+npm install
 
 # Run npm audit to check for vulnerabilities
 Write-Host "Running security audit..." -ForegroundColor Blue
@@ -258,8 +240,3 @@ if (-not $SkipBackup) {
 }
 
 Write-Host "`nUpgrade script completed successfully!" -ForegroundColor Green
-
-# Re-run spfx-fast-serve if it was used in the project
-if ($withFastServe) {
-    spfx-fast-serve
-}

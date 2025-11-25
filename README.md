@@ -6,6 +6,7 @@
 ## Features
 
 - Automatically updates SPFx dependencies to v1.21.1
+- Automatically updates TypeScript dependencies to v5.3
 - Checks for outdated packages and suggests updates
 - Backs up existing configuration files before modification
 - Provides detailed logs of the upgrade process
