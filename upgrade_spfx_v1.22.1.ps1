@@ -30,7 +30,7 @@ param(
     [switch]$SkipBackup = $false
 )
 
-Write-Host "Starting SPFx upgrade to v1.22.1..." -ForegroundColor Green
+Write-Host "Starting SPFx upgrade to v1.22.1" -ForegroundColor Green
 Write-Host "Working directory: $(Get-Location)" -ForegroundColor Yellow
 
 function Get-ObjectMember {
@@ -106,7 +106,7 @@ try {
     $heftVersion = "$(npm ls -g | Select-String -Pattern '@rushstack/heft' -CaseSensitive -SimpleMatch)".Trim().Split("@")[-1]
     Write-Host "Using Heft CLI version: $heftVersion" -ForegroundColor Blue
 } catch {
-    Write-Warning "Heft CLI is not installed globally. Installing heft..."
+    Write-Warning "Heft CLI is not installed globally. Installing heft"
     npm install -g @rushstack/heft
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to install @rushstack/heft. Please install it manually."
@@ -119,7 +119,7 @@ try {
     $yoVersion = yo --version
     Write-Host "Using Yeoman version: $yoVersion" -ForegroundColor Blue
 } catch {
-    Write-Warning "Yeoman (yo) is not installed globally. Installing yo..."
+    Write-Warning "Yeoman (yo) is not installed globally. Installing yo"
     npm install -g yo
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to install yo. Please install it manually."
@@ -132,7 +132,7 @@ try {
     $spfxGenVersion = yo @microsoft/sharepoint --version
     Write-Host "Using @microsoft/generator-sharepoint version: $spfxGenVersion" -ForegroundColor Blue
 } catch {
-    Write-Warning "@microsoft/generator-sharepoint is not installed globally. Installing it..."
+    Write-Warning "@microsoft/generator-sharepoint is not installed globally. Installing it"
     npm install -g @microsoft/generator-sharepoint
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to install @microsoft/generator-sharepoint. Please install it manually."
@@ -142,14 +142,14 @@ try {
 
 # Create backup of package.json if not skipped
 if (-not $SkipBackup) {
-    Write-Host "Creating backup of package.json..." -ForegroundColor Blue
+    Write-Host "Creating backup of package.json" -ForegroundColor Blue
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     Copy-Item "package.json" "package.json.backup_$timestamp"
     Write-Host "Backup created: package.json.backup_$timestamp" -ForegroundColor Green
 }
 
 # Clean install process
-Write-Host "Starting clean installation process..." -ForegroundColor Green
+Write-Host "Starting clean installation process" -ForegroundColor Blue
 
 # Uninstall Gulp toolchain dependencies
 Write-Host "Uninstall Gulp toolchain dependencies" -ForegroundColor Green
@@ -158,28 +158,28 @@ npm uninstall @microsoft/rush-stack-compiler-4.7
 npm uninstall @microsoft/rush-stack-compiler-5.3
 
 # Remove node_modules and package-lock.json
-Write-Host "Cleaning existing installation..." -ForegroundColor Blue
+Write-Host "Cleaning existing installation" -ForegroundColor Blue
 if (Test-Path "node_modules") {
-    Write-Host "Removing node_modules directory..." -ForegroundColor Yellow
+    Write-Host "Removing node_modules directory" -ForegroundColor Yellow
     Remove-Item "node_modules" -Recurse -Force
 }
 
 if (Test-Path "package-lock.json") {
-    Write-Host "Removing package-lock.json..." -ForegroundColor Yellow
+    Write-Host "Removing package-lock.json" -ForegroundColor Yellow
     Remove-Item "package-lock.json" -Force
 }
 
 # Clear npm cache
-Write-Host "Clearing npm cache..." -ForegroundColor Blue
+Write-Host "Clearing npm cache" -ForegroundColor Blue
 npm cache clean --force
 
 # Set engines node to 22 in package.json
-Write-Host "Setting Node.js engine to v22 in package.json..." -ForegroundColor Blue
+Write-Host "Setting Node.js engine to v22 in package.json" -ForegroundColor Blue
 $json = Get-Content "package.json" | ConvertFrom-Json
 $json.engines.node = ">=22.0.0 <23.0.0"
 
 # Set SPFx v1.22.1 dependencies
-Write-Host "Set SPFx v1.22.1 dependencies..." -ForegroundColor Green
+Write-Host "Set SPFx v1.22.1 dependencies" -ForegroundColor Green
 
 # Set main SPFx dependencies
 $spfxDependencies = @(
@@ -210,7 +210,7 @@ $json.devDependencies | Get-ObjectMember | foreach {
 }
 
 # Set Heft toolchain dependencies
-Write-Host "Set Heft toolchain dependencies..." -ForegroundColor Green
+Write-Host "Set Heft toolchain dependencies" -ForegroundColor Green
 
 $newSpfxDevDependencies = @(
     "@microsoft/spfx-web-build-rig@1.22.1",
@@ -233,11 +233,11 @@ foreach ($dependency in $newSpfxDevDependencies) {
 $json.devDependencies.'@rushstack/eslint-config' = '4.5.2'
 
 # Set Typescript dependencies to v5.8
-Write-Host "Set Typescript dependencies to v5.8..." -ForegroundColor Green
+Write-Host "Set Typescript dependencies to v5.8" -ForegroundColor Green
 $json.devDependencies.typescript = '~5.8.0'
 
 # Update npm scripts in package.json
-Write-Host "Update npm scripts..." -ForegroundColor Green
+Write-Host "Update npm scripts" -ForegroundColor Green
 $json.scripts.build = "heft build --clean"
 $json.scripts.clean = "heft clean"
 if ($json.scripts.test -eq "gulp test") {
@@ -245,7 +245,7 @@ if ($json.scripts.test -eq "gulp test") {
 }
 
 # Add additional scripts to package.json
-Write-Host "Add additional scripts..." -ForegroundColor Green
+Write-Host "Add additional scripts" -ForegroundColor Green
 
 $additionalScript = @{
     "test-only" = "heft run --only test --"
@@ -264,21 +264,21 @@ foreach ($scriptKey in $additionalScript.Keys) {
 }
 
 # Write package.json
-Write-Host "Writing package.json..." -ForegroundColor Blue
+Write-Host "Writing package.json" -ForegroundColor Blue
 $json | ConvertTo-Json -Depth 10 | Set-Content "package.json"
 
 # Install dependencies
-Write-Host "Installing dependencies..." -ForegroundColor Blue
+Write-Host "Installing dependencies" -ForegroundColor Blue
 npm install
 
 # Update the ESLint configuration
 if (-not $SkipBackup) {
-    Write-Host "Creating backup of .eslintrc.js..." -ForegroundColor Blue
+    Write-Host "Creating backup of .eslintrc.js" -ForegroundColor Blue
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     Copy-Item ".eslintrc.js" ".eslintrc.js.backup_$timestamp"
     Write-Host "Backup created: .eslintrc.js.backup_$timestamp" -ForegroundColor Green
 }
-Write-Host "Updating ESLint configuration..." -ForegroundColor Blue
+Write-Host "Updating ESLint configuration" -ForegroundColor Blue
 $content = Get-Content ".eslintrc.js" -Raw
 $tabs = ""
 if ($content -match "([\W]*)'@rushstack/hoist-jest-mock': 1,") {
@@ -290,11 +290,11 @@ $content -replace "'@microsoft/spfx/pair-react-dom-render-unmount': 1", "" | Set
 Write-Host "ESLint configuration file updated" -ForegroundColor Green
 
 # Run npm audit to check for vulnerabilities
-Write-Host "Running security audit..." -ForegroundColor Blue
+Write-Host "Running security audit" -ForegroundColor Blue
 npm audit --audit-level=moderate
 
 # Add the SPFx Heft rig
-Write-Host "Add the SPFx Heft rig..." -ForegroundColor Blue
+Write-Host "Add the SPFx Heft rig" -ForegroundColor Blue
 $rigJson = @{
     "`$schema" = "https://developer.microsoft.com/json-schemas/rig-package/rig.schema.json"
     "rigPackageName" = "@microsoft/spfx-web-build-rig"
@@ -303,12 +303,12 @@ $rigJson | ConvertTo-Json | Set-Content "./config/rig.json"
 
 # Replace the Sass configuration
 if (-not $SkipBackup) {
-    Write-Host "Creating backup of config/sass.json..." -ForegroundColor Blue
+    Write-Host "Creating backup of config/sass.json" -ForegroundColor Blue
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     Copy-Item "./config/sass.json" "./config/sass.json.backup_$timestamp"
     Write-Host "Backup created: config/sass.json.backup_$timestamp" -ForegroundColor Green
 }
-Write-Host "Replace the Sass configuration..." -ForegroundColor Blue
+Write-Host "Replace the Sass configuration" -ForegroundColor Blue
 $sassJson = @{
   "`$schema" = "https://developer.microsoft.com/json-schemas/heft/v0/heft-sass-plugin.schema.json"
   "extends" = "@microsoft/spfx-web-build-rig/profiles/default/config/sass.json"
@@ -316,7 +316,7 @@ $sassJson = @{
 $sassJson | ConvertTo-Json | Set-Content "./config/sass.json" -Force
 
 # Add the Heft TypeScript Plugin configuration
-Write-Host "Add the Heft TypeScript Plugin configuration..." -ForegroundColor Blue
+Write-Host "Add the Heft TypeScript Plugin configuration" -ForegroundColor Blue
 $typescriptJson = @{
   "extends" = "@microsoft/spfx-web-build-rig/profiles/default/config/typescript.json"
   "staticAssetsToCopy" = @{
@@ -328,12 +328,12 @@ $typescriptJson | ConvertTo-Json | Set-Content "./config/typescript.json"
 
 # Replace the TypeScript compiler configuration
 if (-not $SkipBackup) {
-    Write-Host "Creating backup of tsconfig.json..." -ForegroundColor Blue
+    Write-Host "Creating backup of tsconfig.json" -ForegroundColor Blue
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     Copy-Item "tsconfig.json" "tsconfig.json.backup_$timestamp"
     Write-Host "Backup created: tsconfig.json.backup_$timestamp" -ForegroundColor Green
 }
-Write-Host "Replace the TypeScript compiler configuration..." -ForegroundColor Blue
+Write-Host "Replace the TypeScript compiler configuration" -ForegroundColor Blue
 $json = Get-Content "tsconfig.json" | ConvertFrom-Json
 $json.extends = "./node_modules/@microsoft/spfx-web-build-rig/profiles/default/tsconfig-base.json"
 $json | ConvertTo-Json -Depth 10 | Set-Content "tsconfig.json"
@@ -342,12 +342,12 @@ $json | ConvertTo-Json -Depth 10 | Set-Content "tsconfig.json"
 $gulpFile = Get-Content "gulpfile.js"
 if (($gulpFile.Count -eq 16) -and ($gulpFile[-1] -eq "build.initialize(require('gulp'));")) {
     if (-not $SkipBackup) {
-        Write-Host "Creating backup of gulpfile.js..." -ForegroundColor Blue
+        Write-Host "Creating backup of gulpfile.js" -ForegroundColor Blue
         $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
         Copy-Item "gulpfile.js" "gulpfile.js.backup_$timestamp"
         Write-Host "Backup created: gulpfile.js.backup_$timestamp" -ForegroundColor Green
     }
-    Write-Host "Delete gulpfile..." -ForegroundColor Blue
+    Write-Host "Delete gulpfile" -ForegroundColor Blue
     Remove-Item "gulpfile.js" -Force
 }
 else {
@@ -355,7 +355,7 @@ else {
 }
 
 # Final verification
-Write-Host "Verifying installation..." -ForegroundColor Green
+Write-Host "Verifying installation" -ForegroundColor Green
 if (Test-Path "node_modules") {
     $nodeModulesCount = (Get-ChildItem "node_modules" | Measure-Object).Count
     Write-Host "Installation complete! $nodeModulesCount packages installed." -ForegroundColor Green
@@ -370,7 +370,7 @@ Write-Host "SPFx project has been upgraded to v1.22.1 including Heft toolchain" 
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "1. Review package.json for any version conflicts" -ForegroundColor White
 Write-Host "2. Run 'heft build --clean' to test the build" -ForegroundColor White
-Write-Host "3. Run 'npm run serve' to test the development server" -ForegroundColor White
+Write-Host "3. Run 'heft start' to test the development server" -ForegroundColor White
 
 if (-not $SkipBackup) {
     Write-Host "4. Remove backup file if everything works correctly" -ForegroundColor White
