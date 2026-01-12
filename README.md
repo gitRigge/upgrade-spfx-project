@@ -38,7 +38,7 @@ This project provide tools which may help you to upgrade your existing SPFx proj
 
 - Review the changes after running the script.
 - Test your project thoroughly after the upgrade.
-- Refer to the [SPFx release notes](https://docs.microsoft.com/sharepoint/dev/spfx/release-1.21.1) for additional guidance.
+- Refer to the [SPFx release notes](https://docs.microsoft.com/sharepoint/dev/spfx/release-1.22.1) for additional guidance.
 
 ## upgrade_spfx_v1.21.1.ps1
 ### Overview
