@@ -118,6 +118,10 @@ try {
 try {
     $yoVersion = yo --version
     Write-Host "Using Yeoman version: $yoVersion" -ForegroundColor Blue
+    if ($yoVersion -ne '6.0.0') {
+        Write-Host "Update available: 6.0.0 (current: $($yoVersion))" -ForegroundColor DarkBlue
+        Write-Host "Run 'npm install -g yo' to update." -ForegroundColor DarkBlue
+    }
 } catch {
     Write-Warning "Yeoman (yo) is not installed globally. Installing yo"
     npm install -g yo
@@ -129,8 +133,12 @@ try {
 
 # Check if @microsoft/generator-sharepoint is installed
 try {
-    $spfxGenVersion = yo @microsoft/sharepoint --version
+    $spfxGenVersion = "$(npm ls -g | Select-String -Pattern '@microsoft/generator-sharepoint' -CaseSensitive -SimpleMatch)".Trim().Split("@")[-1]
     Write-Host "Using @microsoft/generator-sharepoint version: $spfxGenVersion" -ForegroundColor Blue
+    if ($spfxGenVersion -ne '1.22.1') {
+        Write-Host "Update available: 1.22.1 (current: $($spfxGenVersion))" -ForegroundColor DarkBlue
+        Write-Host "Run 'npm install -g @microsoft/generator-sharepoint@latest' to update." -ForegroundColor DarkBlue
+    }
 } catch {
     Write-Warning "@microsoft/generator-sharepoint is not installed globally. Installing it"
     npm install -g @microsoft/generator-sharepoint
@@ -238,29 +246,12 @@ $json.devDependencies.typescript = '~5.8.0'
 
 # Update npm scripts in package.json
 Write-Host "Update npm scripts" -ForegroundColor Green
-$json.scripts.build = "heft build --clean"
+$json.scripts.build = "heft test --clean --production && heft package-solution --production"
+$json.scripts.start = "heft start --clean"
 $json.scripts.clean = "heft clean"
+$json.scripts.'eject-webpack' = "heft eject-webpack"
 if ($json.scripts.test -eq "gulp test") {
     $json.scripts.test = "heft test"
-}
-
-# Add additional scripts to package.json
-Write-Host "Add additional scripts" -ForegroundColor Green
-
-$additionalScript = @{
-    "test-only" = "heft run --only test --"
-    "deploy" = "heft dev-deploy"
-    "start" = "heft start --clean"
-    "build-watch" = "heft build --lite"
-    "package-solution" = "heft package-solution"
-    "deploy-azure-storage" = "heft deploy-azure-storage"
-    "eject-webpack" = "heft eject-webpack"
-    "trust-dev-cert" = "heft trust-dev-cert"
-    "untrust-dev-cert" = "heft untrust-dev-cert"
-}
-
-foreach ($scriptKey in $additionalScript.Keys) {
-    $null = Add-ObjectMember -obj $json.scripts -Key $scriptKey -Value $additionalScript[$scriptKey]
 }
 
 # Write package.json
